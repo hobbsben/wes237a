@@ -13,8 +13,6 @@ DigitalOut PWM4(p8);
 int main()
 {
     char c = pc.getc();
-    int count=0;
-    int count1=0;
     pc.printf("ready \r\n");
     while(1) {
         // specify period first
@@ -22,9 +20,7 @@ int main()
             c = pc.getc();
         }
         if((c == 'f')) { //if f presed clock wise
-            count1++;
-            pc.printf(" %d ",count1);
-
+          
             PWM4.write(1);
             wait(.01);
             PWM4.write(0);
@@ -51,9 +47,6 @@ int main()
 
 //if r pressed, counter clock
         if((c == 'r')) {
-
-            count++;
-            pc.printf(" %d ",count);
 
 
             PWM1.write(1);
