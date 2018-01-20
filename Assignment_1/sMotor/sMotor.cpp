@@ -23,7 +23,7 @@ void dist(int distance) //this needs to be here...... check why
     
 }
 
-ultrasonic mu(p8, p9, .1, 1, &dist);
+ultrasonic mu(p11, p12, .1, 1, &dist);
 
 sMotor::sMotor(PinName A0, PinName A1, PinName A2, PinName A3) : _A0(A0), _A1(A1), _A2(A2), _A3(A3) { // Defenition of motor pins
     _A0=0;

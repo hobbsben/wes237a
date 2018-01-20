@@ -1,7 +1,7 @@
 #include "mbed.h"
 #include "sMotor.h"
 
-InterruptIn pb(p12);
+InterruptIn pb(p13);
 
 Serial pc(USBTX, USBRX);
 sMotor motor(p14, p15, p16, p17); // creates new stepper motor: IN1, IN2, IN3, IN4
@@ -9,7 +9,7 @@ sMotor motor(p14, p15, p16, p17); // creates new stepper motor: IN1, IN2, IN3, I
 Ticker measure;
 
 int step_speed = 2000 ; // set default motor speed
-int numstep = 540 ; // defines full turn of 360 degree
+int numstep = 512 ; // defines full turn of 360 degree
 //you might want to calibrate this value according to your motor
 
 void checkmeasure() {
