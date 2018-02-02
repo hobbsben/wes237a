@@ -2,6 +2,22 @@
 #include "sMotor.h"
 #include "ultrasonic.h"
 #include "circBuffer.h"
+#include "Adafruit_SSD1306.h"
+
+#define PI 3.1416
+
+// an I2C sub-class that provides a constructed default
+class I2CPreInit : public I2C
+{
+public:
+    I2CPreInit(PinName sda, PinName scl) : I2C(sda, scl) {
+        frequency(400000);
+        start();
+    };
+};
+
+I2CPreInit gI2C(p9,p10);
+Adafruit_SSD1306_I2c gOled2(gI2C,p27,0x7a,64,128);
 
 #define CIRCBUF_DEF(x,y) fooptr x##_dataSpace[y]; circBuf_t x = {.buffer = x##_dataSpace,.head = 0,.tail = 0,.maxLen = y}
 CIRCBUF_DEF(buffP1, 32);
@@ -21,19 +37,58 @@ int motordirection = 0;
 int motorpositionstep = 0;
 int sensorDistance;
 bool pause = false;
+double rad = 0;
+//this is not hard-coded hacked way TODO
+double foundx[20]= {-1};
+double foundy[20]= {-1};
+int numberFound=0;
+
+void drawRadarPin()
+{
+    double x1 = 0;
+    double y1 = 0;
+    x1 = 64 + (64 * cos(rad));
+    y1 = 64 - (64 * sin(rad));
+    gOled2.clearDisplay();
+    gOled2.drawCircle(64, 64, 63, WHITE);
+    gOled2.drawCircle(64, 64, 47, WHITE);
+    gOled2.drawCircle(64, 64, 31, WHITE);
+    gOled2.drawCircle(64, 64, 15, WHITE);
+    gOled2.drawLine(0, 63, 128, 63, WHITE);
+    gOled2.drawLine(64,64,x1,y1,WHITE);
+
+    //TODO remove hack
+    for (int i =0; i<21; i++) {
+        if (foundx[i] != -1) {
+            gOled2.fillCircle(foundx[i], foundy[i],3,WHITE);
+        }
+    }
+
+    gOled2.display();
+}
 
 void printDistance(void)
 {
     if (sensorDistance < 500 && sensorDistance > 20) {
-        pc.printf("%d %d\r\n",motorpositionstep*180/270, sensorDistance);
+        //pc.printf("%d %d\r\n",motorpositionstep*180/270, sensorDistance);
+        double scaledRange = sensorDistance*64/500;
+        double x1=64+(scaledRange*cos(rad));
+        double y1=64-(scaledRange*sin(rad));
+        foundx[numberFound]=x1;
+        foundy[numberFound]=y1;
+        numberFound++;
     }
 }
 
 void dist(int distance)
 {
     sensorDistance = distance;
+    rad = motorpositionstep * PI/270;
     if (circBuffPush(&buffP2, &printDistance)) {
         pc.printf("P2 buffer full\r\n");
+    }
+    if (circBuffPush(&buffP3, &drawRadarPin)) {
+        pc.printf("P3 buffer full\r\n");
     }
 }
 
@@ -48,7 +103,7 @@ void buttonAction()
 {
     if (pause == true) {
         measure.detach();
-        pc.printf("Paused\r\n");
+        //pc.printf("Paused\r\n");
         if (circBuffPush(&buffP1, &buttonAction)) {
             pc.printf("P1 buffer full\r\n");
         }
@@ -77,14 +132,29 @@ void moveMotor()
         motorpositionstep++;
         if (motorpositionstep == 270) {
             motordirection = 1;
+            //TODO remove hack
+            for (int i =0; i<21; i++) {
+                if (foundx[i] != -1) {
+                    foundx[i]=-1;
+                    foundy[i]=-1;
+                    numberFound=0;
+                }
+            }
         }
     } else if (motordirection == 1) {
         motorpositionstep--;
         if (motorpositionstep == 0) {
             motordirection = 0;
+            //TODO remove hack
+            for (int i =0; i<21; i++) {
+                if (foundx[i] != -1) {
+                    foundx[i]=-1;
+                    foundy[i]=-1;
+                    numberFound=0;
+                }
+            }
         }
     }
-
     if (circBuffPush(&buffP3, &moveMotor)) {
         pc.printf("P3 buffer full\r\n");
     }
@@ -102,6 +172,9 @@ int main()
     // Delay for initial pullup to take effect
     wait(.001);
     pb.fall(&flipISR);
+
+    wait_ms(2000); // 2 s for Logo to be displayed
+    gOled2.clearDisplay();
 
     if (circBuffPush(&buffP3, &moveMotor)) {
         pc.printf("P3 buffer full\r\n");
